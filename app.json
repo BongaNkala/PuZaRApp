@@ -5,33 +5,50 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F172A"
+      "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.puzar"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#0F172A"
+        "backgroundColor": "#000000"
       },
-      "package": "com.yourcompany.puzar"
+      "package": "com.bongankala.puzar",
+      "enableProguardInReleaseBuilds": false
     },
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24,
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0"
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ]
+    ],
     "extra": {
       "eas": {
-        "projectId": "365f07f1-d03a-4af8-9ae2-e2dcab6d3ceb"
+        "projectId": "e6f29d6a-f2b2-43e7-bd83-e05f0d800290"
       }
-    }
+    },
+    "owner": "bongankala"
   }
 }
