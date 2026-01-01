@@ -1,0 +1,1671 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Alert,
+  Modal,
+  TextInput,
+  FlatList,
+  Animated,
+  Easing,
+  Dimensions,
+  ImageBackground
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import gameCards from '../data/gameCards';
+
+const { width, height } = Dimensions.get('window');
+
+const GameScreen = ({ route, navigation }) => {
+  const selectedMode = route?.params?.mode || 'THE WARM UP';
+  const level = route?.params?.level || 'Beginner';
+  
+  // Process players - ensure they are strings
+  let rawPlayers = route?.params?.players || ['Player 1', 'Player 2'];
+  const players = Array.isArray(rawPlayers) 
+    ? rawPlayers.map(p => typeof p === 'object' ? p.name || 'Player' : p)
+    : ['Player 1', 'Player 2'];
+
+  // States
+  const [modeGames, setModeGames] = useState([]);
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [showAnswerModal, setShowAnswerModal] = useState(false);
+  const [currentCard, setCurrentCard] = useState(null);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [scores, setScores] = useState({});
+  const [usedCards, setUsedCards] = useState(new Set());
+  const [timer, setTimer] = useState(30);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [totalDrinks, setTotalDrinks] = useState(0);
+  const [cardHistory, setCardHistory] = useState([]);
+  
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(height)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  
+  // Game stats
+  const [gameStats, setGameStats] = useState({
+    totalQuestions: 0,
+    correctAnswers: 0,
+    totalPenaltyShots: 0,
+    timeSpent: 0
+  });
+
+  // Initialize
+  useEffect(() => {
+    const games = gameCards.getCardsByMode(selectedMode);
+    setModeGames(games);
+    
+    // Initialize scores
+    const initialScores = {};
+    players.forEach(player => {
+      initialScores[player] = 0;
+    });
+    setScores(initialScores);
+    
+    // Start animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      })
+    ]).start();
+    
+    console.log(`${selectedMode} game initialized with ${games.length} cards`);
+  }, []);
+
+  // Timer effect with animation
+  useEffect(() => {
+    if (timer > 0 && currentCard) {
+      // Pulse animation for last 10 seconds
+      if (timer <= 10) {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, {
+              toValue: 1.1,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseAnim, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      }
+      
+      const timerId = setTimeout(() => setTimer(timer - 1), 1000);
+      return () => clearTimeout(timerId);
+    } else if (timer === 0 && currentCard) {
+      handleTimeUp();
+    }
+  }, [timer, currentCard]);
+
+  const startGame = () => {
+    setGameStarted(true);
+    drawNewCard();
+    
+    // Slide up animation
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 500,
+      easing: Easing.out(Easing.back(1.5)),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const drawNewCard = () => {
+    if (modeGames.length === 0) return;
+    
+    // Filter unused cards
+    const unusedCards = modeGames.filter(card => !usedCards.has(card.id));
+    
+    if (unusedCards.length === 0) {
+      endGame();
+      return;
+    }
+    
+    // Select random card
+    const randomIndex = Math.floor(Math.random() * unusedCards.length);
+    const card = unusedCards[randomIndex];
+    
+    setCurrentCard(card);
+    setUsedCards(prev => new Set([...prev, card.id]));
+    setCardHistory(prev => [card, ...prev.slice(0, 4)]);
+    setTimer(30);
+    setUserAnswer('');
+    setShowHint(false);
+    
+    // Update stats
+    setGameStats(prev => ({
+      ...prev,
+      totalQuestions: prev.totalQuestions + 1
+    }));
+    
+    // Show modal with animation
+    setTimeout(() => {
+      setShowAnswerModal(true);
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+    }, 300);
+  };
+
+  const handleTimeUp = () => {
+    const currentPlayer = players[currentPlayerIndex];
+    const penalty = currentCard.penaltyShots;
+    
+    setStreak(0);
+    setTotalDrinks(prev => prev + penalty);
+    setGameStats(prev => ({
+      ...prev,
+      totalPenaltyShots: prev.totalPenaltyShots + penalty
+    }));
+    
+    Alert.alert(
+      'Time\'s Up! Drink Up!',
+      `${currentPlayer} drinks ${penalty} shot${penalty > 1 ? 's' : ''}!`,
+      [
+        {
+          text: 'Drink Up',
+          onPress: nextPlayer,
+          style: 'destructive'
+        }
+      ]
+    );
+  };
+
+  const checkAnswer = () => {
+    if (!currentCard || !userAnswer.trim()) return;
+    
+    const currentPlayer = players[currentPlayerIndex];
+    const isCorrect = userAnswer.trim().toLowerCase() === currentCard.answer.toLowerCase();
+    
+    if (isCorrect) {
+      // Calculate points with streak bonus
+      const basePoints = 100;
+      const streakBonus = streak * 25;
+      const totalPoints = basePoints + streakBonus;
+      
+      // Update score
+      const newScores = { ...scores };
+      newScores[currentPlayer] = (newScores[currentPlayer] || 0) + totalPoints;
+      setScores(newScores);
+      
+      // Update streak
+      setStreak(prev => prev + 1);
+      
+      // Update stats
+      setGameStats(prev => ({
+        ...prev,
+        correctAnswers: prev.correctAnswers + 1
+      }));
+      
+      Alert.alert(
+        'Correct!',
+        `${currentPlayer} gets ${totalPoints} points!${streak > 0 ? `\n${streak + 1} in a row!` : ''}`,
+        [
+          {
+            text: 'Next Player ->',
+            onPress: nextPlayer,
+            style: 'default'
+          }
+        ]
+      );
+    } else {
+      const penalty = currentCard.penaltyShots;
+      setStreak(0);
+      setTotalDrinks(prev => prev + penalty);
+      
+      setGameStats(prev => ({
+        ...prev,
+        totalPenaltyShots: prev.totalPenaltyShots + penalty
+      }));
+      
+      Alert.alert(
+        'Wrong!',
+        `${currentPlayer} drinks ${penalty} shot${penalty > 1 ? 's' : ''}!\n\nCorrect answer: ${currentCard.answer}`,
+        [
+          {
+            text: 'Drink & Continue',
+            onPress: nextPlayer,
+            style: 'destructive'
+          }
+        ]
+      );
+    }
+    
+    setShowAnswerModal(false);
+  };
+
+  const nextPlayer = () => {
+    setCurrentPlayerIndex((currentPlayerIndex + 1) % players.length);
+    setTimeout(drawNewCard, 1000);
+  };
+
+  const endGame = () => {
+    const scoreEntries = Object.entries(scores);
+    const winner = scoreEntries.reduce((a, b) => a[1] > b[1] ? a : b)[0];
+    const totalPoints = scoreEntries.reduce((sum, [_, score]) => sum + score, 0);
+    
+    Alert.alert(
+      'Game Over!',
+      `Winner: ${winner}\n\nFinal Scores:\n${scoreEntries.map(([player, score]) => `${player}: ${score}`).join('\n')}\n\nTotal Drinks: ${totalDrinks}\nAccuracy: ${((gameStats.correctAnswers / gameStats.totalQuestions) * 100).toFixed(1)}%`,
+      [
+        {
+          text: 'Play Again',
+          onPress: () => {
+            // Reset game
+            setUsedCards(new Set());
+            setScores(Object.fromEntries(players.map(p => [p, 0])));
+            setCurrentPlayerIndex(0);
+            setStreak(0);
+            setTotalDrinks(0);
+            setGameStarted(false);
+            setCardHistory([]);
+            setGameStats({
+              totalQuestions: 0,
+              correctAnswers: 0,
+              totalPenaltyShots: 0,
+              timeSpent: 0
+            });
+          }
+        },
+        {
+          text: 'Back to Menu',
+          onPress: () => navigation.goBack(),
+          style: 'cancel'
+        }
+      ]
+    );
+  };
+
+  const currentPlayer = players[currentPlayerIndex];
+  const accuracy = gameStats.totalQuestions > 0 
+    ? (gameStats.correctAnswers / gameStats.totalQuestions) * 100 
+    : 0;
+
+  const renderPlayerScore = ({ item: player, index }) => (
+    <Animated.View 
+      style={[
+        styles.playerCard,
+        index === currentPlayerIndex && styles.activePlayerCard,
+        { opacity: fadeAnim }
+      ]}
+    >
+      <View style={styles.playerHeader}>
+        <Text style={[
+          styles.playerName,
+          index === currentPlayerIndex && styles.activePlayerName
+        ]}>
+          {player}
+          {index === currentPlayerIndex ? " (Playing)" : ""}
+        </Text>
+        <View style={styles.scoreBadge}>
+          <Text style={styles.scoreText}>{scores[player] || 0}</Text>
+        </View>
+      </View>
+      <View style={styles.playerStats}>
+        <Text style={styles.statText}>
+          Streak: {index === currentPlayerIndex ? streak : "--"}
+        </Text>
+        <Text style={styles.statText}>
+          Drinks: {Math.floor(scores[player] / 500) || 0}
+        </Text>
+      </View>
+    </Animated.View>
+  );
+
+  const renderHistoryCard = ({ item, index }) => (
+    <View style={styles.historyCard}>
+      <Text style={styles.historyText} numberOfLines={1}>
+        {item.text}
+      </Text>
+      <View style={[
+        styles.historyDifficulty,
+        { backgroundColor: 
+          item.difficulty === 'easy' ? '#10B981' :
+          item.difficulty === 'medium' ? '#F59E0B' : '#EF4444'
+        }
+      ]}>
+        <Text style={styles.historyDifficultyText}>
+          {item.difficulty.charAt(0).toUpperCase()}
+        </Text>
+      </View>
+    </View>
+  );
+
+  return (
+    <ImageBackground 
+      source={require('../../assets/images/homescreen.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
+        <View style={styles.overlay}>
+          <Animated.View style={[
+            styles.content,
+            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }
+          ]}>
+            <View style={styles.header}>
+              <TouchableOpacity 
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+              >
+                <Text style={styles.backButtonText}>Back</Text>
+              </TouchableOpacity>
+              
+              <View style={styles.headerCenter}>
+                <Text style={styles.title}>{selectedMode}</Text>
+                <Text style={styles.subtitle}>{level} • {modeGames.length} cards (Total: 150)</Text>
+              </View>
+              
+              <View style={styles.statsBadge}>
+                <Text style={styles.statsText}>Acc: {accuracy.toFixed(0)}%</Text>
+              </View>
+            </View>
+
+            {!gameStarted ? (
+              <Animated.View style={[styles.startScreen, { opacity: fadeAnim }]}>
+                <View style={styles.startContent}>
+                  {/* Logo Container - Beautiful Text Logo */}
+                  <View style={styles.logoContainer}>
+                    <View style={styles.logoCircle}>
+                      <Text style={styles.logoText}>PUZAR</Text>
+                    </View>
+                    <View style={styles.logoSubtitle}>
+                      <Text style={styles.logoSubtitleText}>Drinking Game</Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.startTitle}>READY TO PLAY?</Text>
+                  <Text style={styles.startSubtitle}>
+                    {selectedMode} Challenge
+                  </Text>
+                  
+                  <View style={styles.playerList}>
+                    <Text style={styles.playerListTitle}>PLAYERS JOINED:</Text>
+                    {players.map((player, index) => (
+                      <View key={index} style={styles.startPlayerItem}>
+                        <View style={styles.playerAvatar}>
+                          <Text style={styles.avatarText}>
+                            {player.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <Text style={styles.startPlayerName}>{player}</Text>
+                        <View style={styles.playerReady}>
+                          <Text style={styles.playerReadyText}>✓</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                  
+                  <View style={styles.gameInfo}>
+                    <Text style={styles.infoText}>• 30s Challenges • Streak Bonuses • Penalty Shots •</Text>
+                    <Text style={styles.infoSubtext}>150 Unique Cards • 3 Difficulty Modes</Text>
+                  </View>
+                  
+                  <TouchableOpacity 
+                    style={styles.startGameButton}
+                    onPress={startGame}
+                  >
+                    <Text style={styles.startGameButtonText}>START CHALLENGE</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.modeBadge}>
+                    <Text style={styles.modeBadgeText}>MODE: {selectedMode}</Text>
+                  </View>
+                </View>
+              </Animated.View>
+            ) : (
+              <>
+                <View style={styles.gameStatsBar}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Cards Left</Text>
+                    <Text style={styles.statValue}>
+                      {modeGames.length - usedCards.size}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.divider} />
+                  
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Total Drinks</Text>
+                    <Text style={styles.statValue}>{totalDrinks}</Text>
+                  </View>
+                  
+                  <View style={styles.divider} />
+                  
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Current Streak</Text>
+                    <Text style={styles.statValue}>{streak}</Text>
+                  </View>
+                </View>
+
+                <Animated.View 
+                  style={[
+                    styles.currentPlayerHighlight,
+                    { transform: [{ scale: pulseAnim }] }
+                  ]}
+                >
+                  <Text style={styles.currentPlayerLabel}>NOW PLAYING</Text>
+                  <Text style={styles.currentPlayerName}>{currentPlayer}</Text>
+                </Animated.View>
+
+                <FlatList
+                  data={players}
+                  renderItem={renderPlayerScore}
+                  keyExtractor={(item, index) => index.toString()}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.playersList}
+                />
+
+                <View style={styles.controls}>
+                  <TouchableOpacity 
+                    style={[styles.controlButton, styles.drawButton]}
+                    onPress={drawNewCard}
+                  >
+                    <Text style={styles.controlButtonText}>Draw Card</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.controlButton, styles.statsButton]}
+                    onPress={() => {
+                      Alert.alert(
+                        'Game Stats',
+                        `Total Questions: ${gameStats.totalQuestions}\nCorrect: ${gameStats.correctAnswers}\nAccuracy: ${accuracy.toFixed(1)}%\nTotal Drinks: ${totalDrinks}\nCards Used: ${usedCards.size}/${modeGames.length}`
+                      );
+                    }}
+                  >
+                    <Text style={styles.controlButtonText}>Stats</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {cardHistory.length > 0 && (
+                  <View style={styles.historySection}>
+                    <Text style={styles.historyTitle}>Recent Cards</Text>
+                    <FlatList
+                      data={cardHistory}
+                      renderItem={renderHistoryCard}
+                      keyExtractor={(item, index) => index.toString()}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                    />
+                  </View>
+                )}
+              </>
+            )}
+          </Animated.View>
+        </View>
+
+        <Modal
+          visible={showAnswerModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAnswerModal(false)}
+        >
+          <Animated.View 
+            style={[
+              styles.modalOverlay,
+              { transform: [{ translateY: slideAnim }] }
+            ]}
+          >
+            <View style={styles.modalContainer}>
+              {currentCard && (
+                <>
+                  <View style={styles.modalHeader}>
+                    <View>
+                      <Text style={styles.modalTitle}>CHALLENGE!</Text>
+                      <Text style={styles.modalSubtitle}>For: {currentPlayer}</Text>
+                    </View>
+                    
+                    <Animated.View 
+                      style={[
+                        styles.timerContainer,
+                        { transform: [{ scale: pulseAnim }] }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.timerText,
+                        timer <= 10 && styles.timerWarning
+                      ]}>
+                        Timer: {timer}s
+                      </Text>
+                    </Animated.View>
+                  </View>
+
+                  <View style={styles.cardContent}>
+                    <Text style={styles.cardQuestion}>{currentCard.text}</Text>
+                    
+                    <View style={styles.cardMeta}>
+                      <View style={[
+                        styles.difficultyBadge,
+                        { backgroundColor: 
+                          currentCard.difficulty === 'easy' ? '#10B981' :
+                          currentCard.difficulty === 'medium' ? '#F59E0B' : '#EF4444'
+                        }
+                      ]}>
+                        <Text style={styles.difficultyText}>
+                          {currentCard.difficulty.toUpperCase()}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.penaltyBadge}>
+                        <Text style={styles.penaltyText}>
+                          {currentCard.penaltyShots} SHOT{currentCard.penaltyShots > 1 ? 'S' : ''}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    {currentCard.hint && (
+                      <TouchableOpacity 
+                        style={styles.hintSection}
+                        onPress={() => setShowHint(!showHint)}
+                      >
+                        <Text style={styles.hintLabel}>
+                          {showHint ? currentCard.hint : 'Tap for hint'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <TextInput
+                    style={styles.answerInput}
+                    placeholder="Type your answer here..."
+                    placeholderTextColor="#94A3B8"
+                    value={userAnswer}
+                    onChangeText={setUserAnswer}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    onSubmitEditing={checkAnswer}
+                  />
+
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity 
+                      style={[styles.actionButton, styles.drinkButton]}
+                      onPress={() => {
+                        Alert.alert(
+                          'Drink Up!',
+                          `${currentPlayer} must drink ${currentCard.penaltyShots} shot${currentCard.penaltyShots > 1 ? 's' : ''}!\n\nWant to try answering instead?`,
+                          [
+                            { text: 'Try Answer', style: 'cancel' },
+                            { 
+                              text: `Drink ${currentCard.penaltyShots} Shot${currentCard.penaltyShots > 1 ? 's' : ''}`, 
+                              onPress: () => {
+                                setShowAnswerModal(false);
+                                nextPlayer();
+                              },
+                              style: 'destructive'
+                            }
+                          ]
+                        );
+                      }}
+                    >
+                      <Text style={styles.drinkButtonText}>Drink</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={[
+                        styles.actionButton, 
+                        styles.submitButton,
+                        !userAnswer.trim() && styles.disabledButton
+                      ]}
+                      onPress={checkAnswer}
+                      disabled={!userAnswer.trim()}
+                    >
+                      <Text style={styles.submitButtonText}>Submit Answer</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
+          </Animated.View>
+        </Modal>
+      </SafeAreaView>
+    </ImageBackground>
+  );
+};
+
+const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  container: {
+    flex: 1,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+  },
+  content: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(245, 158, 11, 0.3)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(245, 158, 11, 0.5)',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  headerCenter: {
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: '#E2E8F0',
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  statsBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.6)',
+  },
+  statsText: {
+    color: '#FBBF24',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // ... (keep all the existing styles, they remain the same)
+  // Rest of the styles remain identical to previous version
+});
+
+// Export all the same styles (truncated for brevity, but they're the same)
+    
+      <SafeAreaView style={styles.container}>
+        <View style={styles.overlay}>
+          <Animated.View style={[
+            styles.content,
+            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }
+          ]}>
+            <View style={styles.header}>
+              <TouchableOpacity 
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+              >
+                <Text style={styles.backButtonText}>Back</Text>
+              </TouchableOpacity>
+              
+              <View style={styles.headerCenter}>
+                <Text style={styles.title}>{selectedMode}</Text>
+                <Text style={styles.subtitle}>{level} • {modeGames.length} cards (Total: 150)</Text>
+              </View>
+              
+              <View style={styles.statsBadge}>
+                <Text style={styles.statsText}>Acc: {accuracy.toFixed(0)}%</Text>
+              </View>
+            </View>
+
+            {!gameStarted ? (
+              <Animated.View style={[styles.startScreen, { opacity: fadeAnim }]}>
+                <View style={styles.startContent}>
+                  {/* Logo Container - Beautiful Text Logo */}
+                  <View style={styles.logoContainer}>
+                    <View style={styles.logoCircle}>
+                      <Text style={styles.logoText}>PUZAR</Text>
+                    </View>
+                    <View style={styles.logoSubtitle}>
+                      <Text style={styles.logoSubtitleText}>Drinking Game</Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.startTitle}>READY TO PLAY?</Text>
+                  <Text style={styles.startSubtitle}>
+                    {selectedMode} Challenge
+                  </Text>
+                  
+                  <View style={styles.playerList}>
+                    <Text style={styles.playerListTitle}>PLAYERS JOINED:</Text>
+                    {players.map((player, index) => (
+                      <View key={index} style={styles.startPlayerItem}>
+                        <View style={styles.playerAvatar}>
+                          <Text style={styles.avatarText}>
+                            {player.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <Text style={styles.startPlayerName}>{player}</Text>
+                        <View style={styles.playerReady}>
+                          <Text style={styles.playerReadyText}>✓</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                  
+                  <View style={styles.gameInfo}>
+                    <Text style={styles.infoText}>• 30s Challenges • Streak Bonuses • Penalty Shots •</Text>
+                    <Text style={styles.infoSubtext}>150 Unique Cards • 3 Difficulty Modes</Text>
+                  </View>
+                  
+                  <TouchableOpacity 
+                    style={styles.startGameButton}
+                    onPress={startGame}
+                  >
+                    <Text style={styles.startGameButtonText}>START CHALLENGE</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.modeBadge}>
+                    <Text style={styles.modeBadgeText}>MODE: {selectedMode}</Text>
+                  </View>
+                </View>
+              </Animated.View>
+            ) : (
+              <>
+                <View style={styles.gameStatsBar}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Cards Left</Text>
+                    <Text style={styles.statValue}>
+                      {modeGames.length - usedCards.size}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.divider} />
+                  
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Total Drinks</Text>
+                    <Text style={styles.statValue}>{totalDrinks}</Text>
+                  </View>
+                  
+                  <View style={styles.divider} />
+                  
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Current Streak</Text>
+                    <Text style={styles.statValue}>{streak}</Text>
+                  </View>
+                </View>
+
+                <Animated.View 
+                  style={[
+                    styles.currentPlayerHighlight,
+                    { transform: [{ scale: pulseAnim }] }
+                  ]}
+                >
+                  <Text style={styles.currentPlayerLabel}>NOW PLAYING</Text>
+                  <Text style={styles.currentPlayerName}>{currentPlayer}</Text>
+                </Animated.View>
+
+                <FlatList
+                  data={players}
+                  renderItem={renderPlayerScore}
+                  keyExtractor={(item, index) => index.toString()}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.playersList}
+                />
+
+                <View style={styles.controls}>
+                  <TouchableOpacity 
+                    style={[styles.controlButton, styles.drawButton]}
+                    onPress={drawNewCard}
+                  >
+                    <Text style={styles.controlButtonText}>Draw Card</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.controlButton, styles.statsButton]}
+                    onPress={() => {
+                      Alert.alert(
+                        'Game Stats',
+                        `Total Questions: ${gameStats.totalQuestions}\nCorrect: ${gameStats.correctAnswers}\nAccuracy: ${accuracy.toFixed(1)}%\nTotal Drinks: ${totalDrinks}\nCards Used: ${usedCards.size}/${modeGames.length}`
+                      );
+                    }}
+                  >
+                    <Text style={styles.controlButtonText}>Stats</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {cardHistory.length > 0 && (
+                  <View style={styles.historySection}>
+                    <Text style={styles.historyTitle}>Recent Cards</Text>
+                    <FlatList
+                      data={cardHistory}
+                      renderItem={renderHistoryCard}
+                      keyExtractor={(item, index) => index.toString()}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                    />
+                  </View>
+                )}
+              </>
+            )}
+          </Animated.View>
+        </View>
+
+        <Modal
+          visible={showAnswerModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAnswerModal(false)}
+        >
+          <Animated.View 
+            style={[
+              styles.modalOverlay,
+              { transform: [{ translateY: slideAnim }] }
+            ]}
+          >
+            <View style={styles.modalContainer}>
+              {currentCard && (
+                <>
+                  <View style={styles.modalHeader}>
+                    <View>
+                      <Text style={styles.modalTitle}>CHALLENGE!</Text>
+                      <Text style={styles.modalSubtitle}>For: {currentPlayer}</Text>
+                    </View>
+                    
+                    <Animated.View 
+                      style={[
+                        styles.timerContainer,
+                        { transform: [{ scale: pulseAnim }] }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.timerText,
+                        timer <= 10 && styles.timerWarning
+                      ]}>
+                        Timer: {timer}s
+                      </Text>
+                    </Animated.View>
+                  </View>
+
+                  <View style={styles.cardContent}>
+                    <Text style={styles.cardQuestion}>{currentCard.text}</Text>
+                    
+                    <View style={styles.cardMeta}>
+                      <View style={[
+                        styles.difficultyBadge,
+                        { backgroundColor: 
+                          currentCard.difficulty === 'easy' ? '#10B981' :
+                          currentCard.difficulty === 'medium' ? '#F59E0B' : '#EF4444'
+                        }
+                      ]}>
+                        <Text style={styles.difficultyText}>
+                          {currentCard.difficulty.toUpperCase()}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.penaltyBadge}>
+                        <Text style={styles.penaltyText}>
+                          {currentCard.penaltyShots} SHOT{currentCard.penaltyShots > 1 ? 'S' : ''}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    {currentCard.hint && (
+                      <TouchableOpacity 
+                        style={styles.hintSection}
+                        onPress={() => setShowHint(!showHint)}
+                      >
+                        <Text style={styles.hintLabel}>
+                          {showHint ? currentCard.hint : 'Tap for hint'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <TextInput
+                    style={styles.answerInput}
+                    placeholder="Type your answer here..."
+                    placeholderTextColor="#94A3B8"
+                    value={userAnswer}
+                    onChangeText={setUserAnswer}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    onSubmitEditing={checkAnswer}
+                  />
+
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity 
+                      style={[styles.actionButton, styles.drinkButton]}
+                      onPress={() => {
+                        Alert.alert(
+                          'Drink Up!',
+                          `${currentPlayer} must drink ${currentCard.penaltyShots} shot${currentCard.penaltyShots > 1 ? 's' : ''}!\n\nWant to try answering instead?`,
+                          [
+                            { text: 'Try Answer', style: 'cancel' },
+                            { 
+                              text: `Drink ${currentCard.penaltyShots} Shot${currentCard.penaltyShots > 1 ? 's' : ''}`, 
+                              onPress: () => {
+                                setShowAnswerModal(false);
+                                nextPlayer();
+                              },
+                              style: 'destructive'
+                            }
+                          ]
+                        );
+                      }}
+                    >
+                      <Text style={styles.drinkButtonText}>Drink</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={[
+                        styles.actionButton, 
+                        styles.submitButton,
+                        !userAnswer.trim() && styles.disabledButton
+                      ]}
+                      onPress={checkAnswer}
+                      disabled={!userAnswer.trim()}
+                    >
+                      <Text style={styles.submitButtonText}>Submit Answer</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
+          </Animated.View>
+        </Modal>
+      </SafeAreaView>
+    </ImageBackground>
+  );
+};
+
+const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  container: {
+    flex: 1,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+  },
+  content: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(245, 158, 11, 0.3)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(245, 158, 11, 0.5)',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  headerCenter: {
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: '#E2E8F0',
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  statsBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.6)',
+  },
+  statsText: {
+    color: '#FBBF24',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  startScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  startContent: {
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    padding: 25,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  logoCircle: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+    borderWidth: 5,
+    borderColor: 'white',
+  },
+  logoText: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: 'white',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 5,
+  },
+  logoSubtitle: {
+    backgroundColor: 'rgba(245, 158, 11, 0.4)',
+    paddingHorizontal: 25,
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.7)',
+  },
+  logoSubtitleText: {
+    color: '#FDE68A',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  startTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: 1.5,
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 5,
+  },
+  startSubtitle: {
+    fontSize: 18,
+    color: '#E2E8F0',
+    marginBottom: 30,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  playerList: {
+    width: '100%',
+    marginBottom: 30,
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    padding: 20,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  playerListTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F1F5F9',
+    marginBottom: 15,
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  startPlayerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  playerAvatar: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  startPlayerName: {
+    fontSize: 18,
+    color: '#F1F5F9',
+    fontWeight: '600',
+    flex: 1,
+  },
+  playerReady: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  playerReadyText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  gameInfo: {
+    width: '100%',
+    marginBottom: 30,
+    alignItems: 'center',
+  },
+  infoText: {
+    fontSize: 16,
+    color: '#CBD5E1',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  infoSubtext: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    fontWeight: '400',
+  },
+  startGameButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 50,
+    paddingVertical: 20,
+    borderRadius: 18,
+    width: '100%',
+    marginBottom: 25,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  startGameButtonText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+    letterSpacing: 1.5,
+  },
+  modeBadge: {
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+  },
+  modeBadgeText: {
+    color: '#FBBF24',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  gameStatsBar: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 18,
+    padding: 18,
+    justifyContent: 'space-between',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statLabel: {
+    fontSize: 13,
+    color: '#CBD5E1',
+    marginBottom: 6,
+    fontWeight: '600',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#F59E0B',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  divider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginHorizontal: 10,
+  },
+  currentPlayerHighlight: {
+    backgroundColor: 'rgba(245, 158, 11, 0.3)',
+    marginHorizontal: 20,
+    marginTop: 20,
+    padding: 22,
+    borderRadius: 18,
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#F59E0B',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  currentPlayerLabel: {
+    fontSize: 14,
+    color: '#FDE68A',
+    fontWeight: '700',
+    marginBottom: 8,
+    letterSpacing: 1.5,
+  },
+  currentPlayerName: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#F59E0B',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  playersList: {
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+  },
+  playerCard: {
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    borderRadius: 15,
+    padding: 18,
+    marginRight: 12,
+    width: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  activePlayerCard: {
+    backgroundColor: 'rgba(245, 158, 11, 0.25)',
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  playerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  playerName: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#F1F5F9',
+    flex: 1,
+  },
+  activePlayerName: {
+    color: '#F59E0B',
+    fontWeight: 'bold',
+  },
+  scoreBadge: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  scoreText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  playerStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statText: {
+    fontSize: 12,
+    color: '#CBD5E1',
+    fontWeight: '500',
+  },
+  controls: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginTop: 15,
+    gap: 12,
+  },
+  controlButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  drawButton: {
+    backgroundColor: '#10B981',
+  },
+  statsButton: {
+    backgroundColor: '#6366F1',
+  },
+  controlButtonText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  historySection: {
+    paddingHorizontal: 20,
+    marginTop: 22,
+  },
+  historyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F1F5F9',
+    marginBottom: 12,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  historyCard: {
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    padding: 14,
+    borderRadius: 10,
+    marginRight: 12,
+    width: 140,
+    height: 70,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  historyText: {
+    color: '#CBD5E1',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  historyDifficulty: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  historyDifficultyText: {
+    color: 'white',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#1E293B',
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
+    padding: 28,
+    minHeight: height * 0.75,
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  modalTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#F59E0B',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: '#CBD5E1',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  timerContainer: {
+    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#EF4444',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  timerText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  timerWarning: {
+    color: '#FCA5A5',
+  },
+  cardContent: {
+    marginBottom: 28,
+  },
+  cardQuestion: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#F1F5F9',
+    lineHeight: 36,
+    marginBottom: 24,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  cardMeta: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 18,
+  },
+  difficultyBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  difficultyText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  penaltyBadge: {
+    backgroundColor: '#7C2D12',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  penaltyText: {
+    color: '#FBBF24',
+    fontSize: 13,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  hintSection: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    marginTop: 12,
+  },
+  hintLabel: {
+    color: '#FDE68A',
+    fontSize: 15,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  answerInput: {
+    backgroundColor: '#334155',
+    color: 'white',
+    padding: 20,
+    borderRadius: 15,
+    fontSize: 17,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 18,
+    borderRadius: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  drinkButton: {
+    backgroundColor: 'rgba(16, 185, 129, 0.25)',
+    borderWidth: 2,
+    borderColor: '#10B981',
+  },
+  submitButton: {
+    backgroundColor: '#10B981',
+  },
+  disabledButton: {
+    backgroundColor: '#64748B',
+    opacity: 0.5,
+  },
+  drinkButtonText: {
+    color: '#10B981',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  submitButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+});
+
+export default GameScreen;

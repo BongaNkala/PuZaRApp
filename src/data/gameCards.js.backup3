@@ -1,0 +1,54 @@
+// Game Cards Database - 60 Easy Cards for THE WARM UP mode
+const gameCards = [
+  { id: 1, type: 'puzzle', text: 'Solve: 3 + 7 Ã— 2', answer: '17', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 2, type: 'puzzle', text: 'Next number: 2, 4, 6, 8, ?', answer: '10', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 3, type: 'puzzle', text: 'Unscramble: O L W E H L', answer: 'HELLOW', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 4, type: 'puzzle', text: 'If A=1, B=2, what is C?', answer: '3', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 5, type: 'puzzle', text: '15% of 200?', answer: '30', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 6, type: 'puzzle', text: '5Â² + 3Â² = ?', answer: '34', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 7, type: 'puzzle', text: 'Next letter: A, C, E, G, ?', answer: 'I', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 8, type: 'puzzle', text: 'Sides of a hexagon?', answer: '6', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 9, type: 'puzzle', text: 'Capital of France?', answer: 'PARIS', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 10, type: 'puzzle', text: 'Opposite of "hot"?', answer: 'COLD', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  // ... 50 more cards (keeping it short for example)
+];
+
+// Helper functions - CLEAN VERSION
+const getCardsByMode = (mode) => {
+  console.log('í´ getCardsByMode searching for mode:', mode);
+  console.log('í³Š Total cards available:', gameCards.length);
+  const result = gameCards.filter(card => {
+    const match = card.mode === mode;
+    if (!match) console.log('   Skipping card:', card.id, 'mode:', card.mode);
+    return match;
+  });
+  console.log(`âœ… Found ${result.length} cards for mode: "${mode}"`);
+  return result;
+};
+
+const getWarmUpCards = () => getCardsByMode('THE WARM UP');
+
+const getRandomCards = (count, mode = null) => {
+  let filteredCards = gameCards;
+  if (mode) {
+    filteredCards = getCardsByMode(mode);
+  }
+  const shuffled = [...filteredCards].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, Math.min(count, shuffled.length));
+};
+
+const getRandomCardsByMode = (mode, count) => {
+  console.log(`í¾² getRandomCardsByMode: ${count} cards for "${mode}"`);
+  return getRandomCards(count, mode);
+};
+
+// Export everything
+export {
+  gameCards,
+  getCardsByMode,
+  getWarmUpCards,
+  getRandomCards,
+  getRandomCardsByMode
+};
+
+export default gameCards;

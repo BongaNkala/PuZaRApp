@@ -1,0 +1,9 @@
+Note: For actual PNG logo, you need to:
+1. Create a logo design (200x200px for app icon, 400x400px for display)
+2. Save it as assets/images/logo.png
+3. Save app icon as assets/images/app-icon.png
+
+Recommended sizes:
+- App Icon: 1024x1024px
+- Home Screen Logo: 400x400px
+- Small Icon: 100x100px

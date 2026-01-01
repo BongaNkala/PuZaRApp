@@ -1,0 +1,59 @@
+//   DRINKING GAME CARDS - PuZaR App
+console.log("Game cards loading...");
+
+const gameCards = {
+  cards: [
+    // ========== THE WARM UP (Beginner - 1-2 shots) ==========
+    { id: 1, type: 'math', text: 'Solve: 3 + 7 × 2', answer: '17', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP', category: 'calculation', hint: 'Remember PEMDAS!' },
+    { id: 2, type: 'sequence', text: 'Next number: 2, 4, 6, 8, ?', answer: '10', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP', category: 'pattern', hint: 'Even numbers' },
+    { id: 3, type: 'word', text: 'Unscramble: O L W E H L', answer: 'HELLOW', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP', category: 'scramble', hint: 'Greeting word' },
+    { id: 4, type: 'drinking', text: 'Last person to touch their nose drinks 1 shot!', answer: 'QUICK', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP', category: 'action', hint: 'Be fast!' },
+    { id: 5, type: 'trivia', text: 'What color is a stop sign?', answer: 'RED', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP', category: 'knowledge', hint: 'Traffic color' },
+    { id: 6, type: 'challenge', text: 'Do 10 push-ups or drink 2 shots!', answer: 'PUSHUPS', difficulty: 'medium', penaltyShots: 2, mode: 'THE WARM UP', category: 'physical', hint: 'Exercise option' },
+    { id: 7, type: 'word', text: 'Name a drink starting with "B"', answer: 'BEER', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP', category: 'drinks', hint: 'Popular alcoholic beverage' },
+    { id: 8, type: 'logic', text: 'I follow you all day but disappear at night. What am I?', answer: 'SHADOW', difficulty: 'medium', penaltyShots: 2, mode: 'THE WARM UP', category: 'riddle', hint: 'Light creates me' },
+    { id: 9, type: 'quick', text: 'QUICK! Last person to stand up drinks!', answer: 'FAST', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP', category: 'action', hint: 'Move quickly!' }, 
+    { id: 10, type: 'math', text: 'What is 50% of 100?', answer: '50', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP', category: 'calculation', hint: 'Half' },
+  ],
+  
+  getCardsByMode: function(mode) {
+    return this.cards.filter(card => card.mode === mode);
+  },
+  
+  getRandomCardsByMode: function(mode, count) {
+    const modeCards = this.getCardsByMode(mode);
+    const shuffled = [...modeCards].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+  },
+  
+  getCardsByCategory: function(category) {
+    return this.cards.filter(card => card.category === category);
+  },
+  
+  getRandomCard: function() {
+    return this.cards[Math.floor(Math.random() * this.cards.length)];
+  },
+  
+  getCardById: function(id) {
+    return this.cards.find(card => card.id === id);
+  },
+  
+  getStats: function() {
+    return {
+      totalCards: this.cards.length,
+      modes: [...new Set(this.cards.map(card => card.mode))],
+      difficulties: {
+        easy: this.cards.filter(card => card.difficulty === 'easy').length,
+        medium: this.cards.filter(card => card.difficulty === 'medium').length,
+        hard: this.cards.filter(card => card.difficulty === 'hard').length
+      }
+    };
+  }
+};
+
+console.log("Game cards loaded!");
+const stats = gameCards.getStats();
+console.log("Total cards:", stats.totalCards);
+console.log("Modes:", stats.modes);
+
+module.exports = gameCards;

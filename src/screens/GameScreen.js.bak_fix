@@ -1,0 +1,515 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  ImageBackground,
+  Animated,
+  Dimensions,
+  Easing,
+} from 'react-native';
+
+const { width } = Dimensions.get('window');
+const isSmallScreen = width < 375;
+
+const GameScreen = ({ navigation, route }) => {
+  const { players = ['Player 1', 'Player 2'], selectedMode = 'CLASSIC', level = 'EASY' } = route.params || {};
+  const [gameStarted, setGameStarted] = useState(false);
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Start pulse animation
+  useEffect(() => {
+    if (!gameStarted) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.05,
+            duration: 600,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 600,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [gameStarted]);
+
+  const startGame = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 400,
+      useNativeDriver: true,
+    }).start(() => {
+      setGameStarted(true);
+      fadeAnim.setValue(1);
+    });
+  };
+
+  if (gameStarted) {
+    return (
+      <ImageBackground
+        source={require('../../assets/images/background.jpg')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.gameContainer}>
+            <Text style={styles.gameTitle}>Game Started!</Text>
+            <Text style={styles.gameText}>{selectedMode} • {level}</Text>
+            <Text style={styles.playersCount}>{players.length} Players</Text>
+            
+            <View style={styles.playersList}>
+              {players.map((player, index) => (
+                <View key={index} style={styles.gamePlayerItem}>
+                  <View style={styles.gamePlayerAvatar}>
+                    <Text style={styles.gameAvatarText}>
+                      {player.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={styles.gamePlayerName}>{player}</Text>
+                </View>
+              ))}
+            </View>
+
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.backButtonText}>← BACK</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </ImageBackground>
+    );
+  }
+
+  return (
+    <ImageBackground
+      source={require('../../assets/images/background.jpg')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
+        <Animated.View 
+          style={[
+            styles.startScreen, 
+            { opacity: fadeAnim }
+          ]}
+        >
+          {/* Compact Header */}
+          <View style={styles.compactHeader}>
+            <Animated.View 
+              style={[
+                styles.compactCircle,
+                { transform: [{ scale: pulseAnim }] }
+              ]}
+            >
+              <Text style={styles.circleText}>PUZAR</Text>
+            </Animated.View>
+            
+            <View style={styles.modeInfo}>
+              <Text style={styles.modeTitle}>{selectedMode}</Text>
+              <Text style={styles.modeLevel}>{level}</Text>
+              <Text style={styles.playerCount}>{players.length} Players</Text>
+            </View>
+          </View>
+
+          {/* Ready Section */}
+          <View style={styles.readyBox}>
+            <Text style={styles.readyTitle}>READY TO PLAY?</Text>
+            <Text style={styles.readyText}>
+              {selectedMode} challenge with {players.length} players
+            </Text>
+          </View>
+
+          {/* Quick Stats */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>150</Text>
+              <Text style={styles.statLabel}>Cards</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>30s</Text>
+              <Text style={styles.statLabel}>Timer</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statLabel}>Modes</Text>
+            </View>
+          </View>
+
+          {/* Players List - Compact */}
+          <View style={styles.playersContainer}>
+            <Text style={styles.playersTitle}>PLAYERS</Text>
+            <View style={styles.playersGrid}>
+              {players.map((player, index) => (
+                <View key={index} style={styles.playerItem}>
+                  <View style={styles.playerAvatar}>
+                    <Text style={styles.avatarText}>
+                      {player.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={styles.playerName} numberOfLines={1}>
+                    {player}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Quick Features */}
+          <View style={styles.featuresRow}>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureText}>• 30s Challenges</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureText}>• Streak Bonuses</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureText}>• Penalty Rounds</Text>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={startGame}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.startButtonText}>START GAME</Text>
+              <Text style={styles.startButtonSub}>Tap to begin!</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.backOption}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.backOptionText}>Change mode</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </SafeAreaView>
+    </ImageBackground>
+  );
+};
+
+const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  container: {
+    flex: 1,
+  },
+  startScreen: {
+    flex: 1,
+    paddingHorizontal: isSmallScreen ? 15 : 20,
+    paddingVertical: isSmallScreen ? 15 : 20,
+    justifyContent: 'space-between',
+  },
+  // Compact Header
+  compactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  compactCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 10,
+    borderWidth: 4,
+    borderColor: 'white',
+  },
+  circleText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: 'white',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+    fontSize: 24,
+    fontWeight: '900',
+    color: 'white',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  modeInfo: {
+    flex: 1,
+  },
+  modeTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: 'white',
+    marginBottom: 4,
+  },
+  modeLevel: {
+    fontSize: 16,
+    color: '#F59E0B',
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  playerCount: {
+    fontSize: 14,
+    color: '#CBD5E1',
+    fontWeight: '600',
+  },
+  // Ready Box
+  readyBox: {
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  readyTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  readyText: {
+    fontSize: 14,
+    color: '#CBD5E1',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  // Stats Row
+  statsRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#F59E0B',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '700',
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  // Players Container
+  playersContainer: {
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  playersTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: 'white',
+    marginBottom: 12,
+    letterSpacing: 1,
+  },
+  playersGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  playerItem: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+  },
+  playerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  playerName: {
+    flex: 1,
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Features Row
+  featuresRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  featureItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  featureText: {
+    color: '#FDE68A',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Buttons Container
+  buttonsContainer: {
+    marginTop: 'auto',
+  },
+  startButton: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 15,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  startButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  startButtonSub: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  backOption: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  backOptionText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Game Started Styles
+  gameContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  gameTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#8B5CF6',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  gameText: {
+    fontSize: 18,
+    color: '#E2E8F0',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  playersCount: {
+    fontSize: 16,
+    color: '#F59E0B',
+    fontWeight: '700',
+    marginBottom: 20,
+  },
+  playersList: {
+    width: '100%',
+    maxWidth: 300,
+    marginBottom: 30,
+  },
+  gamePlayerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+  },
+  gamePlayerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  gameAvatarText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  gamePlayerName: {
+    flex: 1,
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  backButton: {
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 10,
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+});
+
+export default GameScreen;

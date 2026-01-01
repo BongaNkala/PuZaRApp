@@ -1,0 +1,99 @@
+// Game Cards Database - 100 Easy Cards for THE WARM UP mode
+const gameCards = [
+  // Puzzle Cards (1-40) - max 2 penalty shots
+  { id: 1, type: 'puzzle', text: 'Solve: 3 + 7 × 2', answer: '17', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 2, type: 'puzzle', text: 'Next number: 2, 4, 6, 8, ?', answer: '10', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 3, type: 'puzzle', text: 'Unscramble: O L W E H L', answer: 'HELLOW', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 4, type: 'puzzle', text: 'If A=1, B=2, what is C?', answer: '3', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 5, type: 'puzzle', text: '15% of 200?', answer: '30', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 6, type: 'puzzle', text: '5² + 3² = ?', answer: '34', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 7, type: 'puzzle', text: 'Next letter: A, C, E, G, ?', answer: 'I', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 8, type: 'puzzle', text: 'Sides of a hexagon?', answer: '6', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 9, type: 'puzzle', text: 'Capital of France?', answer: 'PARIS', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 10, type: 'puzzle', text: 'Opposite of "hot"?', answer: 'COLD', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 11, type: 'puzzle', text: '100 ÷ 4 = ?', answer: '25', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 12, type: 'puzzle', text: 'Color of a banana?', answer: 'YELLOW', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 13, type: 'puzzle', text: 'Hours in a day?', answer: '24', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 14, type: 'puzzle', text: '9 × 7 = ?', answer: '63', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 15, type: 'puzzle', text: 'Planet we live on?', answer: 'EARTH', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 16, type: 'puzzle', text: 'Unscramble: T A C', answer: 'CAT', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 17, type: 'puzzle', text: '3/4 of 100?', answer: '75', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 18, type: 'puzzle', text: 'Days in a week?', answer: '7', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 19, type: 'puzzle', text: '12 + 15 = ?', answer: '27', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 20, type: 'puzzle', text: '√64 = ?', answer: '8', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 21, type: 'puzzle', text: 'Continents count?', answer: '7', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 22, type: 'puzzle', text: '20 - 8 = ?', answer: '12', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 23, type: 'puzzle', text: 'Boiling point of water?', answer: '100°C', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 24, type: 'puzzle', text: '5 × 9 = ?', answer: '45', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 25, type: 'puzzle', text: 'Legs on a spider?', answer: '8', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 26, type: 'puzzle', text: '18 ÷ 3 = ?', answer: '6', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 27, type: 'puzzle', text: 'Color of the sky?', answer: 'BLUE', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 28, type: 'puzzle', text: '7 × 8 = ?', answer: '56', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 29, type: 'puzzle', text: 'Minutes in an hour?', answer: '60', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 30, type: 'puzzle', text: '14 + 17 = ?', answer: '31', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  
+  // Challenge Cards (31-70) - max 2 penalty shots
+  { id: 31, type: 'challenge', text: 'Do 10 jumping jacks', answer: 'COMPLETE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 32, type: 'challenge', text: 'Sing "Happy Birthday"', answer: 'COMPLETE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 33, type: 'challenge', text: 'Touch your toes 5 times', answer: 'COMPLETE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 34, type: 'challenge', text: 'Say alphabet backwards from G', answer: 'GFEDCBA', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 35, type: 'challenge', text: 'Spin around 3 times', answer: 'COMPLETE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 36, type: 'challenge', text: 'Name 5 fruits in 10 seconds', answer: 'COMPLETE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 37, type: 'challenge', text: 'Hop on one foot for 15 seconds', answer: 'COMPLETE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 38, type: 'challenge', text: 'Do a silly dance for 10 seconds', answer: 'COMPLETE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 39, type: 'challenge', text: 'Make an animal sound', answer: 'COMPLETE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 40, type: 'challenge', text: 'Count from 20 to 30', answer: 'COMPLETE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  
+  // Riddle Cards (41-70) - max 2 penalty shots  
+  { id: 41, type: 'riddle', text: 'What has keys but cant open locks?', answer: 'PIANO', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 42, type: 'riddle', text: 'What gets wet while drying?', answer: 'TOWEL', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 43, type: 'riddle', text: 'What has head and tail but no body?', answer: 'COIN', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 44, type: 'riddle', text: 'Comes once in minute, twice in moment?', answer: 'M', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 45, type: 'riddle', text: 'What has to be broken before use?', answer: 'EGG', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 46, type: 'riddle', text: 'Full of holes but holds water?', answer: 'SPONGE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 47, type: 'riddle', text: 'Question you cant answer "yes" to?', answer: 'ARE YOU ASLEEP?', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 48, type: 'riddle', text: 'What goes up but never comes down?', answer: 'AGE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 49, type: 'riddle', text: 'What has a neck but no head?', answer: 'BOTTLE', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  { id: 50, type: 'riddle', text: 'What has hands but cant clap?', answer: 'CLOCK', difficulty: 'easy', penaltyShots: 2, mode: 'THE WARM UP' },
+  
+  // More cards to reach 100...
+  { id: 51, type: 'puzzle', text: '11 × 11 = ?', answer: '121', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 52, type: 'puzzle', text: 'Largest planet?', answer: 'JUPITER', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 53, type: 'puzzle', text: 'Months in a year?', answer: '12', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 54, type: 'puzzle', text: '25% of 80?', answer: '20', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 55, type: 'puzzle', text: '19 - 5 = ?', answer: '14', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 56, type: 'puzzle', text: '6 × 7 = ?', answer: '42', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 57, type: 'puzzle', text: 'Seconds in a minute?', answer: '60', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 58, type: 'puzzle', text: '8 + 9 + 7 = ?', answer: '24', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 59, type: 'puzzle', text: 'Opposite of "up"?', answer: 'DOWN', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+  { id: 60, type: 'puzzle', text: 'Weeks in a year?', answer: '52', difficulty: 'easy', penaltyShots: 1, mode: 'THE WARM UP' },
+];
+
+// Helper functions
+const getCardsByMode = (mode) => {
+  return gameCards.filter(card => card.mode === mode);
+};
+
+const getWarmUpCards = () => getCardsByMode('THE WARM UP');
+
+const getRandomCards = (count, mode = null) => {
+  let filteredCards = gameCards;
+  if (mode) {
+    filteredCards = getCardsByMode(mode);
+  }
+  const shuffled = [...filteredCards].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, Math.min(count, filteredCards.length));
+};
+
+const getRandomCardsByMode = (mode, count) => getRandomCards(count, mode);
+
+// Export everything
+export {
+  gameCards,
+  getCardsByMode,
+  getWarmUpCards,
+  getRandomCards,
+  getRandomCardsByMode
+};
+
+export default gameCards;

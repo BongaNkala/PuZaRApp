@@ -1,0 +1,142 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
+  Platform,
+  Dimensions,
+} from 'react-native';
+
+const { width, height } = Dimensions.get('window');
+const isSmallScreen = width < 375;
+const isLargeScreen = width > 414;
+
+const HomeScreen = ({ navigation }) => {
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0F0F23" />
+      
+      <View style={styles.header}>
+        <Text style={styles.title}>PUZAR</Text>
+        <Text style={styles.subtitle}>Party Puzzles & Challenges</Text>
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, styles.createButton]}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('PlayerSetup')}
+        >
+          <Text style={styles.buttonText}>ENTER PLAYERS</Text>
+          <Text style={styles.buttonSubtext}>Set up player names and teams</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, styles.joinButton]}
+          activeOpacity={0.85}
+          onPress={() => alert('Join game feature coming soon!')}
+        >
+          <Text style={styles.buttonText}>JOIN GAME</Text>
+          <Text style={styles.buttonSubtext}>Enter a game code</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, styles.rulesButton]}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Rules')}
+        >
+          <Text style={styles.buttonText}>GAME RULES</Text>
+          <Text style={styles.buttonSubtext}>Learn how to play</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Ready for some fun?</Text>
+        <Text style={styles.footerSubtext}>Enter players or join a game to start</Text>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0F0F23',
+    paddingHorizontal: 20,
+  },
+  header: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    color: '#8B5CF6',
+    fontSize: isLargeScreen ? 64 : isSmallScreen ? 48 : 56,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  subtitle: {
+    color: '#A78BFA',
+    fontSize: isLargeScreen ? 18 : isSmallScreen ? 14 : 16,
+    textAlign: 'center',
+    opacity: 0.9,
+  },
+  buttonContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 20,
+  },
+  button: {
+    paddingVertical: isLargeScreen ? 22 : isSmallScreen ? 16 : 20,
+    paddingHorizontal: 30,
+    borderRadius: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  createButton: {
+    backgroundColor: '#8B5CF6',
+  },
+  joinButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(139, 92, 246, 0.5)',
+  },
+  rulesButton: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.5)',
+  },
+  buttonText: {
+    color: '#FFF',
+    fontSize: isLargeScreen ? 20 : isSmallScreen ? 16 : 18,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  buttonSubtext: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: isLargeScreen ? 14 : isSmallScreen ? 12 : 13,
+  },
+  footer: {
+    paddingBottom: 40,
+    alignItems: 'center',
+  },
+  footerText: {
+    color: '#FFF',
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  footerSubtext: {
+    color: '#9CA3AF',
+    fontSize: 14,
+  },
+});
+
+export default HomeScreen;
